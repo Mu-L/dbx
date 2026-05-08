@@ -616,6 +616,26 @@ const selectedCells = computed(() =>
 const selectedCellCount = computed(() => selectedCells.value.columns.length * selectedCells.value.rows.length);
 const hasCellSelection = computed(() => selectedCellCount.value > 0);
 const selectionSummary = computed(() => t("grid.selectedCells", { count: selectedCellCount.value }));
+const selectionStats = computed(() => {
+  if (!hasCellSelection.value) return null;
+  const sel = selectedCells.value;
+  const nums: number[] = [];
+  let count = 0;
+  for (const row of sel.rows) {
+    for (const val of row) {
+      count++;
+      if (val === null || val === undefined) continue;
+      const n = typeof val === "number" ? val : Number(val);
+      if (!isNaN(n)) nums.push(n);
+    }
+  }
+  if (nums.length === 0) return { count, numCount: 0 };
+  const sum = nums.reduce((a, b) => a + b, 0);
+  const avg = sum / nums.length;
+  const min = Math.min(...nums);
+  const max = Math.max(...nums);
+  return { count, numCount: nums.length, sum, avg, min, max };
+});
 const contextRowItem = computed(() => (contextCell.value ? getRowItem(contextCell.value.rowId) : undefined));
 const activeCellDetail = computed(() => {
   const cell = detailCell.value;
@@ -2052,6 +2072,12 @@ defineExpose({
       <span v-else>{{ t("grid.rowsAffected", { count: result.affected_rows }) }}</span>
       <span>{{ result.execution_time_ms }}ms</span>
       <span v-if="hasCellSelection" class="text-foreground">{{ selectionSummary }}</span>
+      <template v-if="selectionStats?.numCount">
+        <span class="text-foreground">SUM: {{ Number(selectionStats.sum!.toFixed(4)) }}</span>
+        <span class="text-foreground">AVG: {{ Number(selectionStats.avg!.toFixed(4)) }}</span>
+        <span class="text-foreground">MIN: {{ selectionStats.min }}</span>
+        <span class="text-foreground">MAX: {{ selectionStats.max }}</span>
+      </template>
 
       <template v-if="editable && tableMeta && !transactionActive">
         <span v-if="hasPendingChanges" class="ml-2 text-foreground">
